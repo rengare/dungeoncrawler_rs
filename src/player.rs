@@ -1,4 +1,5 @@
 use crate::prelude::*;
+/// Player struct
 
 pub struct Player {
     pub position: Point,
@@ -6,7 +7,7 @@ pub struct Player {
 
 impl Player {
     pub fn new(position: Point) -> Self {
-        Self { position }
+        Player { position }
     }
 
     pub fn render(&self, ctx: &mut BTerm, camera: &Camera) {
