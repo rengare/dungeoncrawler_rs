@@ -65,8 +65,21 @@ is not saved.",
     ctx.print_color_centered(9, GREEN, BLACK, "Press 1 to play again.");
 }
 
+fn display_victory(ctx: &mut BTerm) {
+    ctx.set_active_console(2);
+    ctx.print_color_centered(2, RED, BLACK, "Your quest has ended.");
+    ctx.print_color_centered(
+        4,
+        WHITE,
+        BLACK,
+        "You found the amulet of Yala and now you can return to your princess",
+    );
+
+    ctx.print_color_centered(9, GREEN, BLACK, "Press 1 to play again.");
+}
+
 impl State {
-    fn default(&mut self) {
+    fn reset_game_state(&mut self) {
         self.ecs = World::default();
         self.resources = Resources::default();
         let mut rng = RandomNumberGenerator::new();
@@ -93,14 +106,21 @@ impl State {
             monster_systems: build_monster_scheduler(),
         };
 
-        t.default();
+        t.reset_game_state();
         t
     }
 
     fn game_over(&mut self, ctx: &mut BTerm) {
         display_game_over(ctx);
         if let Some(VirtualKeyCode::Key1) = ctx.key {
-            self.default();
+            self.reset_game_state();
+        }
+    }
+
+    fn victory(&mut self, ctx: &mut BTerm) {
+        display_victory(ctx);
+        if let Some(VirtualKeyCode::Key1) = ctx.key {
+            self.reset_game_state();
         }
     }
 }
@@ -133,6 +153,9 @@ impl GameState for State {
                 .execute(&mut self.ecs, &mut self.resources),
             TurnState::GameOver => {
                 self.game_over(ctx);
+            }
+            TurnState::Victory => {
+                self.victory(ctx);
             }
         }
 
