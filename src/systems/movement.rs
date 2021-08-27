@@ -20,6 +20,9 @@ pub fn movement(
 
                 if entry.get_component::<Player>().is_ok() {
                     camera.on_player_move(want_move.destination);
+                    fov.visible_tiles.iter().for_each(|pos| {
+                        map.reveald_tiles[map_idx(pos.x, pos.y)] = true;
+                    })
                 }
             }
         }

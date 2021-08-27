@@ -52,7 +52,7 @@ premature end.",
         5,
         WHITE,
         BLACK,
-        "The Amulet of Yala remains unclaimed, and your home town \
+        "The princess remains unfound, and your home town \
 is not saved.",
     );
 
@@ -72,7 +72,7 @@ fn display_victory(ctx: &mut BTerm) {
         4,
         WHITE,
         BLACK,
-        "You found the amulet of Yala and now you can return to your princess",
+        "You found the princess and now you can return to your home town ;)",
     );
 
     ctx.print_color_centered(9, GREEN, BLACK, "Press 1 to play again.");
