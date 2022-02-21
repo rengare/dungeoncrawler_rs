@@ -95,6 +95,7 @@ impl State {
         self.resources.insert(map_builder.map);
         self.resources.insert(Camera::new(map_builder.player_start));
         self.resources.insert(TurnState::AwaitInput);
+        self.resources.insert(map_builder.theme);
     }
 
     fn new() -> Self {
