@@ -5,6 +5,8 @@ use crate::prelude::*;
 #[read_component(Player)]
 #[read_component(Enemy)]
 #[write_component(Health)]
+#[write_component(Item)]
+#[write_component(Carried)]
 pub fn player_input(
     ecs: &mut SubWorld,
     commands: &mut CommandBuffer,
@@ -19,6 +21,31 @@ pub fn player_input(
             VirtualKeyCode::Right => Point::new(1, 0),
             VirtualKeyCode::Up => Point::new(0, -1),
             VirtualKeyCode::Down => Point::new(0, 1),
+            VirtualKeyCode::Key1 => use_item(0, ecs, commands),
+            VirtualKeyCode::Key2 => use_item(1, ecs, commands),
+            VirtualKeyCode::Key3 => use_item(2, ecs, commands),
+            VirtualKeyCode::Key4 => use_item(3, ecs, commands),
+            VirtualKeyCode::Key5 => use_item(4, ecs, commands),
+            VirtualKeyCode::Key6 => use_item(5, ecs, commands),
+            VirtualKeyCode::Key7 => use_item(6, ecs, commands),
+            VirtualKeyCode::Key8 => use_item(7, ecs, commands),
+            VirtualKeyCode::Key9 => use_item(8, ecs, commands),
+            VirtualKeyCode::G => {
+                let (player, player_pos) = players
+                    .iter(ecs)
+                    .find_map(|(entity, pos)| Some((*entity, *pos)))
+                    .unwrap();
+
+                let mut items = <(Entity, &Item, &Point)>::query();
+                items
+                    .iter(ecs)
+                    .filter(|(_entity, _item, &item_pos)| item_pos == player_pos)
+                    .for_each(|(entity, _item, _item_pos)| {
+                        commands.remove_component::<Point>(*entity);
+                        commands.add_component(*entity, Carried(player));
+                    });
+                Point::new(0, 0)
+            }
             _ => Point::new(0, 0),
         };
 
@@ -72,4 +99,30 @@ pub fn player_input(
 
         *turn_state = TurnState::PlayerTurn;
     };
+
+    fn use_item(n: usize, ecs: &mut SubWorld, commands: &mut CommandBuffer) -> Point {
+        let player = <(Entity, &Player)>::query()
+            .iter(ecs)
+            .find_map(|(entity, _player)| Some(*entity))
+            .unwrap();
+
+        let item = <(Entity, &Item, &Carried)>::query()
+            .iter(ecs)
+            .filter(|(_, _, carried)| carried.0 == player)
+            .enumerate()
+            .filter(|(item_count, (_, _, _))| *item_count == n)
+            .find_map(|(_, (item_entity, _, _))| Some(*item_entity));
+
+        if let Some(item) = item {
+            commands.push((
+                (),
+                ActivateItem {
+                    used_by: player,
+                    item,
+                },
+            ));
+        }
+
+        Point::zero()
+    }
 }

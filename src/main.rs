@@ -90,7 +90,7 @@ impl State {
         map_builder
             .monster_spawns
             .iter()
-            .for_each(|pos| spawn_monster(&mut self.ecs, &mut rng, *pos));
+            .for_each(|pos| spawn_entity(&mut self.ecs, &mut rng, *pos));
 
         self.resources.insert(map_builder.map);
         self.resources.insert(Camera::new(map_builder.player_start));
