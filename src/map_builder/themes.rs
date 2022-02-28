@@ -9,6 +9,7 @@ impl MapTheme for DungeonTheme {
         match tile_type {
             TileType::Floor => to_cp437('.'),
             TileType::Wall => to_cp437('#'),
+            TileType::Exit => to_cp437('>'),
         }
     }
 }
@@ -26,6 +27,7 @@ impl MapTheme for ForestTheme {
         match tile_type {
             TileType::Floor => to_cp437(';'),
             TileType::Wall => to_cp437('"'),
+            TileType::Exit => to_cp437('>'),
         }
     }
 }
