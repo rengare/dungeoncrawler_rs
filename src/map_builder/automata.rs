@@ -28,11 +28,9 @@ impl MapArchitect for CellularAutomataArchitect {
 impl CellularAutomataArchitect {
     fn random_noise_map(&mut self, rng: &mut RandomNumberGenerator, map: &mut Map) {
         map.tiles.iter_mut().for_each(|t| {
-            // (1)
-            let roll = rng.range(0, 100); // (2)
+            let roll = rng.range(0, 100);
             if roll > 55 {
-                // (3)
-                *t = TileType::Floor; // (4)
+                *t = TileType::Floor;
             } else {
                 *t = TileType::Wall;
             }
@@ -53,14 +51,12 @@ impl CellularAutomataArchitect {
     }
 
     fn iteration(&mut self, map: &mut Map) {
-        let mut new_tiles = map.tiles.clone(); // (5)
+        let mut new_tiles = map.tiles.clone();
         for y in 1..SCREEN_HEIGHT - 1 {
-            // (6)
             for x in 1..SCREEN_WIDTH - 1 {
-                let neighbors = self.count_neighbors(x, y, map); // (7)
+                let neighbors = self.count_neighbors(x, y, map);
                 let idx = map_idx(x, y);
                 if neighbors > 4 || neighbors == 0 {
-                    // (8)
                     new_tiles[idx] = TileType::Wall;
                 } else {
                     new_tiles[idx] = TileType::Floor;
@@ -71,7 +67,7 @@ impl CellularAutomataArchitect {
     }
 
     fn find_start(&self, map: &Map) -> Point {
-        let center = Point::new(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2); // (9)
+        let center = Point::new(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
         let closest_point = map
             .tiles
             .iter() // (10)

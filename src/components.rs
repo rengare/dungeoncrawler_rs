@@ -71,6 +71,9 @@ pub struct ChasingPlayer;
 pub struct Item;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Weapon;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AmuletOfYala;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -89,3 +92,6 @@ pub struct ActivateItem {
     pub used_by: Entity,
     pub item: Entity,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Damage(pub i32);

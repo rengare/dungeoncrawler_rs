@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod camera;
 mod components;
 mod map;
@@ -7,28 +9,24 @@ mod systems;
 mod turn_state;
 
 mod prelude {
+    pub use bracket_lib::prelude::*;
+    pub use legion::systems::CommandBuffer;
+    pub use legion::world::SubWorld;
+    pub use legion::*;
     pub const SCREEN_WIDTH: i32 = 80;
     pub const SCREEN_HEIGHT: i32 = 50;
-
+    pub const DISPLAY_WIDTH: i32 = SCREEN_WIDTH / 2;
+    pub const DISPLAY_HEIGHT: i32 = SCREEN_HEIGHT / 2;
     pub use crate::camera::*;
     pub use crate::components::*;
     pub use crate::map::*;
     pub use crate::map_builder::*;
     pub use crate::spawner::*;
     pub use crate::systems::*;
-    pub use bracket_lib::prelude::*;
-    pub use legion::systems::CommandBuffer;
-    pub use legion::world::SubWorld;
-    pub use legion::*;
-
     pub use crate::turn_state::*;
 }
 
-use pipe_trait::Pipe;
 use prelude::*;
-
-pub const DISPLAY_WIDTH: i32 = SCREEN_WIDTH / 2;
-pub const DISPLAY_HEIGHT: i32 = SCREEN_HEIGHT / 2;
 
 struct State {
     ecs: World,
@@ -38,98 +36,42 @@ struct State {
     monster_systems: Schedule,
 }
 
-fn display_game_over(ctx: &mut BTerm) {
-    ctx.set_active_console(2);
-    ctx.print_color_centered(2, RED, BLACK, "Your quest has ended.");
-    ctx.print_color_centered(
-        4,
-        WHITE,
-        BLACK,
-        "Slain by a monster, your hero's journey has come to a \
-premature end.",
-    );
-    ctx.print_color_centered(
-        5,
-        WHITE,
-        BLACK,
-        "The princess remains unfound, and your home town \
-is not saved.",
-    );
-
-    ctx.print_color_centered(
-        8,
-        YELLOW,
-        BLACK,
-        "Don't worry, you can always try again with a new hero.",
-    );
-    ctx.print_color_centered(9, GREEN, BLACK, "Press 1 to play again.");
-}
-
-fn display_victory(ctx: &mut BTerm) {
-    ctx.set_active_console(2);
-    ctx.print_color_centered(2, RED, BLACK, "Your quest has ended.");
-    ctx.print_color_centered(
-        4,
-        WHITE,
-        BLACK,
-        "You found the princess and now you can return to your home town ;)",
-    );
-
-    ctx.print_color_centered(9, GREEN, BLACK, "Press 1 to play again.");
-}
-
 impl State {
+    fn new() -> Self {
+        let mut ecs = World::default();
+        let mut resources = Resources::default();
+        let mut rng = RandomNumberGenerator::new();
+        let mut map_builder = MapBuilder::new(&mut rng);
+        spawn_player(&mut ecs, map_builder.player_start);
+        let exit_idx = map_builder.map.point2d_to_index(map_builder.amulet_start);
+        map_builder.map.tiles[exit_idx] = TileType::Exit;
+        spawn_level(&mut ecs, &mut rng, 0, &map_builder.monster_spawns);
+        resources.insert(map_builder.map);
+        resources.insert(Camera::new(map_builder.player_start));
+        resources.insert(TurnState::AwaitInput);
+        resources.insert(map_builder.theme);
+        Self {
+            ecs,
+            resources,
+            input_systems: build_input_scheduler(),
+            player_systems: build_player_scheduler(),
+            monster_systems: build_monster_scheduler(),
+        }
+    }
+
     fn reset_game_state(&mut self) {
         self.ecs = World::default();
         self.resources = Resources::default();
         let mut rng = RandomNumberGenerator::new();
         let mut map_builder = MapBuilder::new(&mut rng);
         spawn_player(&mut self.ecs, map_builder.player_start);
-        // spawn_amulet_of_yala(&mut self.ecs, map_builder.amulet_start);
-
-        map_builder
-            .map
-            .point2d_to_index(map_builder.amulet_start)
-            .pipe(|exit_idx| {
-                map_builder.map.tiles[exit_idx] = TileType::Exit;
-            });
-
-        map_builder
-            .monster_spawns
-            .iter()
-            .for_each(|pos| spawn_entity(&mut self.ecs, &mut rng, *pos));
-
+        let exit_idx = map_builder.map.point2d_to_index(map_builder.amulet_start);
+        map_builder.map.tiles[exit_idx] = TileType::Exit;
+        spawn_level(&mut self.ecs, &mut rng, 0, &map_builder.monster_spawns);
         self.resources.insert(map_builder.map);
         self.resources.insert(Camera::new(map_builder.player_start));
         self.resources.insert(TurnState::AwaitInput);
         self.resources.insert(map_builder.theme);
-    }
-
-    fn new() -> Self {
-        let mut t = State {
-            ecs: World::default(),
-            resources: Resources::default(),
-            input_systems: build_input_scheduler(),
-            player_systems: build_player_scheduler(),
-            monster_systems: build_monster_scheduler(),
-        };
-
-        t.reset_game_state();
-        t
-    }
-
-    fn game_over(&mut self, ctx: &mut BTerm) {
-        display_game_over(ctx);
-        if let Some(VirtualKeyCode::Key1) = ctx.key {
-            self.reset_game_state();
-        }
-    }
-
-    fn victory(&mut self, ctx: &mut BTerm) {
-        display_victory(ctx);
-        if let Some(VirtualKeyCode::Key1) = ctx.key {
-            self.reset_game_state();
-        }
     }
 
     fn advance_level(&mut self) {
@@ -142,7 +84,6 @@ impl State {
         use std::collections::HashSet;
         let mut entities_to_keep = HashSet::new();
         entities_to_keep.insert(player_entity);
-
         <(Entity, &Carried)>::query()
             .iter(&self.ecs)
             .filter(|(_e, carry)| carry.0 == player_entity)
@@ -150,14 +91,12 @@ impl State {
             .for_each(|e| {
                 entities_to_keep.insert(e);
             });
-
         let mut cb = CommandBuffer::new(&mut self.ecs);
         for e in Entity::query().iter(&self.ecs) {
             if !entities_to_keep.contains(e) {
                 cb.remove(*e);
             }
         }
-
         cb.flush(&mut self.ecs);
 
         <&mut FieldOfView>::query()
@@ -166,7 +105,6 @@ impl State {
 
         let mut rng = RandomNumberGenerator::new();
         let mut map_builder = MapBuilder::new(&mut rng);
-
         let mut map_level = 0;
         <(&mut Player, &mut Point)>::query()
             .iter_mut(&mut self.ecs)
@@ -176,22 +114,71 @@ impl State {
                 pos.x = map_builder.player_start.x;
                 pos.y = map_builder.player_start.y;
             });
-
         if map_level == 2 {
             spawn_amulet_of_yala(&mut self.ecs, map_builder.amulet_start);
         } else {
             let exit_idx = map_builder.map.point2d_to_index(map_builder.amulet_start);
             map_builder.map.tiles[exit_idx] = TileType::Exit;
         }
-
-        map_builder
-            .monster_spawns
-            .iter()
-            .for_each(|pos| spawn_entity(&mut self.ecs, &mut rng, *pos));
+        spawn_level(
+            &mut self.ecs,
+            &mut rng,
+            map_level as usize,
+            &map_builder.monster_spawns,
+        );
         self.resources.insert(map_builder.map);
         self.resources.insert(Camera::new(map_builder.player_start));
         self.resources.insert(TurnState::AwaitInput);
         self.resources.insert(map_builder.theme);
+    }
+
+    fn game_over(&mut self, ctx: &mut BTerm) {
+        ctx.set_active_console(2);
+        ctx.print_color_centered(2, RED, BLACK, "Your quest has ended.");
+        ctx.print_color_centered(
+            4,
+            WHITE,
+            BLACK,
+            "Slain by a monster, your hero's journey has come to a premature end.",
+        );
+        ctx.print_color_centered(
+            5,
+            WHITE,
+            BLACK,
+            "The Amulet of Yala remains unclaimed, and your home town is not saved.",
+        );
+        ctx.print_color_centered(
+            8,
+            YELLOW,
+            BLACK,
+            "Don't worry, you can always try again with a new hero.",
+        );
+        ctx.print_color_centered(9, GREEN, BLACK, "Press 1 to play again.");
+
+        if let Some(VirtualKeyCode::Key1) = ctx.key {
+            self.reset_game_state();
+        }
+    }
+
+    fn victory(&mut self, ctx: &mut BTerm) {
+        ctx.set_active_console(2);
+        ctx.print_color_centered(2, GREEN, BLACK, "You have won!");
+        ctx.print_color_centered(
+            4,
+            WHITE,
+            BLACK,
+            "You put on the Amulet of Yala and feel its power course through your veins.",
+        );
+        ctx.print_color_centered(
+            5,
+            WHITE,
+            BLACK,
+            "Your town is saved, and you can return to your normal life.",
+        );
+        ctx.print_color_centered(7, GREEN, BLACK, "Press 1 to play again.");
+        if let Some(VirtualKeyCode::Key1) = ctx.key {
+            self.reset_game_state();
+        }
     }
 }
 
@@ -199,25 +186,22 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         ctx.set_active_console(0);
         ctx.cls();
-
         ctx.set_active_console(1);
         ctx.cls();
-
         ctx.set_active_console(2);
         ctx.cls();
-
         self.resources.insert(ctx.key);
         ctx.set_active_console(0);
         self.resources.insert(Point::from_tuple(ctx.mouse_pos()));
-
         let current_state = self.resources.get::<TurnState>().unwrap().clone();
         match current_state {
             TurnState::AwaitInput => self
                 .input_systems
                 .execute(&mut self.ecs, &mut self.resources),
-            TurnState::PlayerTurn => self
-                .player_systems
-                .execute(&mut self.ecs, &mut self.resources),
+            TurnState::PlayerTurn => {
+                self.player_systems
+                    .execute(&mut self.ecs, &mut self.resources);
+            }
             TurnState::MonsterTurn => self
                 .monster_systems
                 .execute(&mut self.ecs, &mut self.resources),
@@ -231,8 +215,7 @@ impl GameState for State {
                 self.advance_level();
             }
         }
-
-        render_draw_buffer(ctx).expect("render error");
+        render_draw_buffer(ctx).expect("Render error");
     }
 }
 
@@ -252,3 +235,4 @@ fn main() -> BError {
 
     main_loop(context, State::new())
 }
+
