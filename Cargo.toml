@@ -7,8 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bracket-lib = "~0.8.1"
-legion = "=0.3.1"
+bracket-lib = "0.8.0"
+legion = { version = "=0.3.1", default-features = false, features = [
+  "wasm-bindgen",
+  "codegen",
+] }
 pipe-trait = "0.3.2"
 ron = "0.7.0"
 serde = "1.0.136"

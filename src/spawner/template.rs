@@ -5,6 +5,8 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs::File;
 
+const TEMPLATE_FILE: &[u8] = include_bytes!("../../resources/template.ron");
+
 #[derive(Clone, Deserialize, Debug)]
 pub struct Template {
     pub entity_type: EntityType,
@@ -31,9 +33,10 @@ pub struct Templates {
 
 impl Templates {
     pub fn load() -> Self {
-        let file = File::open("resources/template.ron") // (11)
-            .expect("Failed opening file");
-        from_reader(file).expect("Unable to load templates") // (12)
+        ron::de::from_bytes(TEMPLATE_FILE).expect("Unable to load templates")
+        // let file = File::open("resources/template.ron") // (11)
+        //     .expect("Failed opening file");
+        // from_reader(file).expect("Unable to load templates") // (12)
     }
 
     pub fn spawn_entities(
